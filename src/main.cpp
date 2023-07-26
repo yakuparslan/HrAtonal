@@ -179,7 +179,9 @@ void loop() {
     }
     else if (strncmp(packetBuffer, "T:", 2) == 0) {
         // Extract the time delay from the packet
+       
         int timeDelay = atoi(packetBuffer + 2);
+        Serial.println(String(timeDelay));
     }
         receiver = "";
 }
