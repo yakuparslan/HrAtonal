@@ -30,7 +30,7 @@ const unsigned int localPort = 1234;
 //It will react as play/stop button 
 int play  = 0;
 int start = 0;
-
+int TimeToStart;
 // delay of motor 
 int delayMotor = 30;
 
@@ -179,9 +179,8 @@ void loop() {
     }
     else if (strncmp(packetBuffer, "T:", 2) == 0) {
         // Extract the time delay from the packet
-       
-        int timeDelay = atoi(packetBuffer + 2);
-        Serial.println(String(timeDelay));
+        TimeToStart = atoi(packetBuffer + 2);
+        Serial.println(String(TimeToStart));
     }
         receiver = "";
 }
