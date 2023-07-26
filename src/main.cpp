@@ -203,6 +203,7 @@ void loop() {
     currentMillis = millis();
     
     if (currentMillis - begin >= interval) {
+      Serial.println(counter);
       digitalWrite(outputPin, HIGH);
       delay(notes_off[counter]-notes_on[counter]);
       digitalWrite(outputPin, LOW); 
