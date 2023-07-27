@@ -12,14 +12,18 @@
 const char* ntpServer = "pool.ntp.org";
 struct tm timeinfo;
 int year,month,day,hour,minute,second;
-
+int desiredHour = 16;
+int desiredMinute = 5;
+int desiredSecond = 0; 
 
 char ssid1[] = "totoo";       
 char pass1[] = "totoo119*";
 
-char ssid2[] = "totoo";       
-char pass2[] = "totoo119*";
+char ssid2[] = "Yakopsen";       
+char pass2[] = "1234567890";
 
+const IPAddress remoteIP(192, 168, 1, 100); // Replace with the IP address of your UDP server
+const unsigned int remotePort = 12345;  
 
 char packetBuffer[255]; 
 
@@ -50,7 +54,13 @@ unsigned long currentMillis = millis();
 unsigned long begin = 0;
 unsigned long previousMillis = 0; 
 
+void Debug(const char* message){
+    // Send UDP packet
+    Udp.beginPacket(remoteIP, remotePort);
+    Udp.write(message);
+    Udp.endPacket();
 
+}
 
 void connectToWiFi() {
   Serial.println("Connecting to Wi-Fi...");
@@ -177,13 +187,25 @@ void loop() {
     else if (receiver == "START" ) {
         start =1;
     }
-    else if (strncmp(packetBuffer, "T:", 2) == 0) {
-        // Extract the time delay from the packet
-        TimeToStart = atoi(packetBuffer + 2);
-        Serial.println(String(TimeToStart));
+    else if (packetBuffer[0] == 'T' ) {
+        // Extract the desired time from the packet
+        char timeStr[9];
+        strncpy(timeStr, packetBuffer + 1, 8);
+        timeStr[8] = '\0';
+
+        // Parse the desired time
+         desiredHour = atoi(timeStr);
+         desiredMinute = atoi(timeStr + 3);
+         desiredSecond = atoi(timeStr + 6);
+
+        Serial.println(String(desiredHour)+":"+String(desiredMinute)+":"+String(desiredSecond));
     }
         receiver = "";
 }
+
+  if(timeinfo.tm_hour==desiredHour&&timeinfo.tm_min==desiredMinute&&timeinfo.tm_sec>=desiredSecond){
+    start=1;
+  }
   if(play==1){
   interval = 60000/bpm; 
   currentMillis = millis();
