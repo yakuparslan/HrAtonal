@@ -199,6 +199,7 @@ void loop() {
          desiredSecond = atoi(timeStr + 6);
 
         Serial.println(String(desiredHour)+":"+String(desiredMinute)+":"+String(desiredSecond));
+        Debug("Time Received:"+hostname);
     }
         receiver = "";
 }
