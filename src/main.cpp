@@ -8,13 +8,6 @@
 #include <NTPClient.h>
 #include <Notes.h>
 
-// NTP settings
-const char* ntpServer = "pool.ntp.org";
-struct tm timeinfo;
-int year,month,day,hour,minute,second;
-int desiredHour = 16;
-int desiredMinute = 5;
-int desiredSecond = 0; 
 
 char ssid1[] = "totoo";       
 char pass1[] = "totoo119*";
@@ -22,8 +15,20 @@ char pass1[] = "totoo119*";
 char ssid2[] = "Yakopsen";       
 char pass2[] = "1234567890";
 
-const IPAddress remoteIP(192, 168, 1, 100); // Replace with the IP address of your UDP server
-const unsigned int remotePort = 12345;  
+
+const IPAddress remoteIP(192,168,0,77); // Replace with the IP address of your UDP server
+const unsigned int remotePort = 1234;  
+
+
+// NTP settings
+const char* ntpServer = "pool.ntp.org";
+struct tm timeinfo;
+int year,month,day,hour,minute,second;
+int desiredHour = 16;
+int desiredMinute = 5;
+int desiredSecond = 0; 
+int desiredAchieve=0;
+String datetimeStr;
 
 char packetBuffer[255]; 
 
@@ -39,7 +44,7 @@ int TimeToStart;
 int delayMotor = 30;
 
 //Output Pin
-const int outputPin = 15;
+const int outputPin = GPIO_NUM_13;
 
 int counter = 0;
 // Default MotorState
@@ -57,7 +62,7 @@ unsigned long previousMillis = 0;
 void Debug(const char* message){
     // Send UDP packet
     Udp.beginPacket(remoteIP, remotePort);
-    Udp.write(message);
+    Udp.write((uint8_t*)message, strlen(message));
     Udp.endPacket();
 
 }
@@ -104,6 +109,14 @@ void connectToWiFi() {
   }
 }
 
+
+String formatDateTime(int year, int month, int day, int hour, int minute, int second) {
+    char datetimeStr[20]; // Allocate a char array to hold the formatted string
+    sprintf(datetimeStr, "%04d%02d%02d-%02d:%02d:%02d", year, month, day, hour, minute, second);
+    return String(datetimeStr);
+}
+
+
 void printLocalTime(){
   
   if(!getLocalTime(&timeinfo)){
@@ -112,7 +125,17 @@ void printLocalTime(){
     Serial.print(".");
     delay(500);
     Serial.print(".");
-    delay(2000);
+    delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
     Serial.print(".");
     return;
   }
@@ -122,7 +145,9 @@ void printLocalTime(){
   hour = timeinfo.tm_hour;
   minute = timeinfo.tm_min;
   second = timeinfo.tm_sec;
-  Serial.println(String(year)+' '+String(month)+" "+String(day)+' '+String(hour)+':'+String(minute)+':'+String(second));
+  datetimeStr = formatDateTime(year, month, day, hour, minute, second);
+
+  Serial.println(datetimeStr); 
 }
 
 void setup() {
@@ -156,6 +181,9 @@ void loop() {
     int len = Udp.read(packetBuffer, 255);
     if (len > 0) packetBuffer[len] = 0;
     String receiver = String(packetBuffer);
+    printLocalTime();
+    String d_send = datetimeStr+"----"+receiver;
+    Debug(d_send.c_str());
     Serial.println(receiver);
     if (receiver == "STOP") {
         play  = 0;
@@ -197,15 +225,19 @@ void loop() {
          desiredHour = atoi(timeStr);
          desiredMinute = atoi(timeStr + 3);
          desiredSecond = atoi(timeStr + 6);
-
+         desiredAchieve=0;
         Serial.println(String(desiredHour)+":"+String(desiredMinute)+":"+String(desiredSecond));
-        Debug("Time Received:"+hostname);
+       
     }
         receiver = "";
 }
-
-  if(timeinfo.tm_hour==desiredHour&&timeinfo.tm_min==desiredMinute&&timeinfo.tm_sec>=desiredSecond){
+ // delay(1000);
+ // printLocalTime();
+  getLocalTime(&timeinfo);
+  if(timeinfo.tm_hour==desiredHour&&timeinfo.tm_min==desiredMinute&&timeinfo.tm_sec>=desiredSecond&&desiredAchieve==0){
     start=1;
+    desiredAchieve=1;
+    
   }
   if(play==1){
   interval = 60000/bpm; 
