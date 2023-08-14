@@ -120,11 +120,6 @@ void printLocalTime(){
   
   if(!getLocalTime(&timeinfo)){
     Serial.println("Failed to obtain time");
-    delay(2000);
-    Serial.print(".");
-    delay(500);
-    Serial.print(".");
-    delay(500);
     Serial.print(".");delay(500);
     Serial.print(".");delay(500);
     Serial.print(".");delay(500);
@@ -135,7 +130,21 @@ void printLocalTime(){
     Serial.print(".");delay(500);
     Serial.print(".");delay(500);
     Serial.print(".");delay(500);
-    Serial.print(".");
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500);
+    Serial.print(".");delay(500); 
+    
     return;
   }
   year = timeinfo.tm_year+1900;
