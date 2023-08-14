@@ -22,6 +22,8 @@ def get_local_ip():
         return "127.0.0.1"
 
 
+
+
 def send_udp_message(target_ip, target_port, message):
     try:
         udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -41,8 +43,8 @@ def receive_udp_message(bind_ip, bind_port, buffer_size=1024):
         while True:
             data, address = udp_socket.recvfrom(buffer_size)
             received_message = data.decode('utf-8')
-            print(f"Received message from {address[0]}:{address[1]} - {received_message}")
-            update_received_messages(f"From {address[0]}:{address[1]} - {received_message}")
+            print(f"Received message from {address[0]} - {received_message}")
+            update_received_messages(f"{address[0]} - {received_message}")
 
     except Exception as e:
         print(f"Error while receiving UDP message: {e}")
@@ -68,13 +70,73 @@ def send_message_with_custom_text():
         target_ip = target_ips_listbox.get(index).strip()
         send_udp_message(target_ip, target_port, message)
 
-def upload_ips_from_file():
-    file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
 
-    if file_path:
+def send_delay_message(slider_value):
+    int_value = int(float(slider_value))
+    delay_value_label.config(text=f"{int_value}") 
+    
+    selected_ips = target_ips_listbox.curselection()
+
+    if not selected_ips:
+        messagebox.showerror("Error", "Please select at least one target IP.")
+        return
+
+    target_port = int(target_port_entry.get())
+
+    if not target_port:
+        messagebox.showerror("Error", "Please enter the target port.")
+        return
+    float_value = float(slider_value)
+    delay_value = int(float_value)
+    message = f"DELAY:{delay_value}"
+
+    for index in selected_ips:
+        target_ip = target_ips_listbox.get(index).strip()
+        send_udp_message(target_ip, target_port, message)
+
+def send_speed_message(slider_value):
+    int_value = int(float(slider_value))
+    speed_value_label.config(text=f"{int_value}") 
+    
+    selected_ips = target_ips_listbox.curselection()
+
+    if not selected_ips:
+        messagebox.showerror("Error", "Please select at least one target IP.")
+        return
+
+    target_port = int(target_port_entry.get())
+
+    if not target_port:
+        messagebox.showerror("Error", "Please enter the target port.")
+        return
+    float_value = float(slider_value)
+    delay_value = int(float_value*3)
+    message = f"BPM:{delay_value}"
+
+    for index in selected_ips:
+        target_ip = target_ips_listbox.get(index).strip()
+        send_udp_message(target_ip, target_port, message)
+
+
+def upload_ips_from_file():
+    try:
+    # Try to read the file from "ip.txt"
+        file_path = "ip.txt"
         with open(file_path, "r") as file:
             target_ips_listbox.delete(0, tk.END)
             target_ips_listbox.insert(tk.END, *file.read().splitlines())
+    except FileNotFoundError:   
+        # If "ip.txt" doesn't exist, prompt the user to choose the file
+        file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
+        if file_path:
+            with open(file_path, "r") as file:
+                target_ips_listbox.delete(0, tk.END)
+                target_ips_listbox.insert(tk.END, *file.read().splitlines())
+def clear_received_messages():
+    received_messages_text.config(state=tk.NORMAL)
+    received_messages_text.delete('1.0', tk.END)
+    received_messages_text.config(state=tk.DISABLED)
+
 
 def update_received_messages(message):
     received_messages_text.config(state=tk.NORMAL)
@@ -100,15 +162,14 @@ def send_message_to_selected_ips(message):
         send_udp_message(target_ip, target_port, message)
 
 def create_gui():
-    global target_ips_listbox, target_port_entry, custom_message_entry, received_messages_text
-
+    global target_ips_listbox, target_port_entry, custom_message_entry, received_messages_text,delay_value_label,speed_value_label
     root = tk.Tk()
     root.title("UDP Message Sender and Receiver")
-
+    
     send_frame = ttk.Frame(root)
     send_frame.grid(row=0, column=0, padx=10, pady=10)
 
-    target_ips_label = ttk.Label(send_frame, text="Target IPs (one IP per line):")
+    target_ips_label = ttk.Label(send_frame, text="Target IPs:")
     target_ips_label.grid(row=0, column=0, columnspan=2, sticky="w")
 
     upload_button = ttk.Button(send_frame, text="Upload", command=upload_ips_from_file)
@@ -133,10 +194,11 @@ def create_gui():
 
     custom_message_entry = ttk.Entry(send_frame)
     custom_message_entry.grid(row=3, column=1, padx=(0, 5), sticky="we", pady=(5, 0))
-
+    custom_message_entry.insert(tk.END, "T15:00:00")
     send_custom_button = ttk.Button(send_frame, text="Send", command=send_message_with_custom_text)
     send_custom_button.grid(row=3, column=2, padx=(0, 5), pady=(5, 0))
 
+    
     start_button = ttk.Button(send_frame, text="Start", command=lambda: send_message_to_selected_ips("START"))
     start_button.grid(row=4, column=0, padx=(0, 5), pady=(5, 0))
 
@@ -144,10 +206,39 @@ def create_gui():
     stop_button.grid(row=4, column=1, padx=(0, 5), pady=(5, 0))
 
     reset_button = ttk.Button(send_frame, text="Reset", command=lambda: send_message_to_selected_ips("RESET"))
-    reset_button.grid(row=4, column=2, padx=(0, 5), pady=(5, 0))
+    reset_button.grid(row=3, column=3, padx=(0, 5), pady=(  5, 0))
+
+    rec = ttk.Button(send_frame, text="Cycle", command=lambda: send_message_to_selected_ips("REC"))
+    rec.grid(row=4, column=3, padx=(0, 5), pady=(  5, 0))
 
     push_button = ttk.Button(send_frame, text="Push", command=lambda: send_message_to_selected_ips("PUSH"))
-    push_button.grid(row=4, column=3, padx=(0, 5), pady=(5, 0))
+    push_button.grid(row=4, column=2, padx=(0, 5), pady=(5, 0))
+
+    clear_button = ttk.Button(send_frame, text="Clear", command=clear_received_messages)
+    clear_button.grid(row=8, column=1, padx=(0, 5), pady=(5, 0))
+
+    delay_label = ttk.Label(send_frame, text="Delay:")
+    delay_label.grid(row=6, column=0, sticky="w")
+
+    delay_slider = ttk.Scale(send_frame, from_=0, to=255, orient=tk.HORIZONTAL, length=200,command=send_delay_message)
+    delay_slider.grid(row=6, column=1, padx=(0, 5), sticky="we")
+    delay_slider.set(30)  # Set the default value to 30
+
+    delay_value_label = ttk.Label(send_frame, text="30")
+    delay_value_label.grid(row=6, column=2, padx=(5, 0), pady=(5, 0))
+
+    speed_label = ttk.Label(send_frame, text="Speed:")
+    speed_label.grid(row=7, column=0, sticky="w")
+
+    speed_slider = ttk.Scale(send_frame, from_=0, to=255, orient=tk.HORIZONTAL, length=200,command=send_speed_message)
+    speed_slider.grid(row=7, column=1, padx=(0, 5), sticky="we")
+    speed_slider.set(40)  # Set the default value to 30
+
+    speed_value_label = ttk.Label(send_frame, text="40")
+    speed_value_label.grid(row=7, column=2, padx=(5, 0), pady=(5, 0))
+
+
+
 
     received_messages_text = tk.Text(send_frame, wrap=tk.WORD, state=tk.DISABLED)
     received_messages_text.grid(row=5, column=0, columnspan=4, padx=5, pady=5, sticky="nsew")
@@ -155,6 +246,14 @@ def create_gui():
     received_messages_scroll = ttk.Scrollbar(send_frame, command=received_messages_text.yview)
     received_messages_scroll.grid(row=5, column=4, sticky="ns")
     received_messages_text.config(yscrollcommand=received_messages_scroll.set)
+
+    try:
+        with open("ip.txt", "r") as file:
+            target_ips_listbox.insert(tk.END, *file.read().splitlines())
+    except FileNotFoundError:
+        pass  # If the file doesn't exist, do nothing
+
+
 
     local_ip = get_local_ip()
     # Start receiving messages in a separate thread

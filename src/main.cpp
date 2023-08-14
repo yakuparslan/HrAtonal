@@ -14,6 +14,8 @@ char pass1[] = "totoo119*";
 
 char ssid2[] = "Yakopsen";       
 char pass2[] = "1234567890";
+//Output Pin
+const int outputPin = GPIO_NUM_13;
 
 
 const IPAddress remoteIP(192,168,0,77); // Replace with the IP address of your UDP server
@@ -42,9 +44,6 @@ int start = 0;
 int TimeToStart;
 // delay of motor 
 int delayMotor = 30;
-
-//Output Pin
-const int outputPin = GPIO_NUM_13;
 
 int counter = 0;
 // Default MotorState
@@ -167,9 +166,7 @@ void setup() {
   Serial.println("Size of the Notes Array: "+String(array_length));
   pinMode(outputPin, OUTPUT);
   digitalWrite(outputPin, motorState);
-  delay(3000);
   configTime(7200, 0, ntpServer);
-
   printLocalTime();
 }
 
@@ -188,6 +185,7 @@ void loop() {
     if (receiver == "STOP") {
         play  = 0;
         start = 0; 
+        counter = 0;
         digitalWrite(outputPin, LOW);      
     }
     else if (receiver == "PUSH") {
@@ -231,8 +229,7 @@ void loop() {
     }
         receiver = "";
 }
- // delay(1000);
- // printLocalTime();
+
   getLocalTime(&timeinfo);
   if(timeinfo.tm_hour==desiredHour&&timeinfo.tm_min==desiredMinute&&timeinfo.tm_sec>=desiredSecond&&desiredAchieve==0){
     start=1;
