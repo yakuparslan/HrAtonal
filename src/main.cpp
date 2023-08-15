@@ -16,11 +16,45 @@ char ssid2[] = "Yakopsen";
 char pass2[] = "1234567890";
 //Output Pin
 const int outputPin = GPIO_NUM_13;
+// delay of motor 
+int delayMotor = 30;
 
 
 const IPAddress remoteIP(192,168,0,77); // Replace with the IP address of your UDP server
 const unsigned int remotePort = 1234;  
 
+// Structure to hold MAC address and device name
+struct DeviceInfo {
+  uint8_t mac[6];
+  const char *name;
+};
+
+// Array of device information
+DeviceInfo devices[] = {
+  {{0xA8, 0x42, 0xE3, 0xCD, 0xEE, 0x78}, "HR01"},
+  {{0xC8, 0xC9, 0xA3, 0xC9, 0xA1, 0x7C}, "HR02"},
+  {{0xA8, 0x42, 0xE3, 0xCD, 0x06, 0xE4}, "HR03"},
+  {{0xA8, 0x42, 0xE3, 0xCD, 0xF0, 0x10}, "HR04"},
+  {{0xA8, 0x42, 0xE3, 0xCC, 0xF8, 0xA4}, "HR05"},
+  {{0xA8, 0x42, 0xE3, 0xCD, 0xF5, 0xD4}, "HR06"},
+  {{0xC8, 0xC9, 0xA3, 0xCA, 0x7F, 0x68}, "HR07"},
+  {{0xA8, 0x42, 0xE3, 0xCD, 0xEF, 0xE0}, "HR08"},
+  {{0xA8, 0x42, 0xE3, 0xCD, 0xE4, 0x3C}, "HR09"},
+  {{0xA8, 0x42, 0xE3, 0xCD, 0xE7, 0xD4}, "HR10"},
+  {{0xA8, 0x42, 0xE3, 0xCD, 0x3F, 0xBC}, "HR11"},
+  {{0x78, 0xE3, 0x6D, 0x09, 0x5A, 0x38}, "HR12"},
+  {{0xA8, 0x42, 0xE3, 0xCE, 0x36, 0xB8}, "HR13"},
+  {{0xA8, 0x42, 0xE3, 0xCE, 0x14, 0x2C}, "HR14"},
+  {{0xA8, 0x42, 0xE3, 0xCE, 0xCF, 0x8C}, "HR15"},
+  {{0xB0, 0xA7, 0x32, 0xF1, 0x5B, 0x6C}, "HR16"},
+  {{0xB0, 0xA7, 0x32, 0xF1, 0x4B, 0xE8}, "HR17"},
+  {{0xA8, 0x42, 0xE3, 0xCD, 0x25, 0xD4}, "HR18"},
+  {{0xA8, 0x42, 0xE3, 0xCD, 0x2F, 0x34}, "HR19"},
+  {{0xB0, 0xA7, 0x32, 0xF1, 0x83, 0x50}, "HR20"},
+  {{0xC8, 0xC9, 0xA3, 0xCA, 0x98, 0xE8}, "HR21"},
+  {{0x3C, 0x06, 0x30, 0x02, 0xD2, 0x29}, "HR22"},
+  // Add more devices here
+};
 
 // NTP settings
 const char* ntpServer = "pool.ntp.org";
@@ -37,13 +71,11 @@ char packetBuffer[255];
 // A UDP instance to let us send and receive packets over UDP
 WiFiUDP Udp;
 const unsigned int localPort = 1234;       
-
+// Find corresponding device name
+const char *espDeviceName = nullptr;
 //It will react as play/stop button 
 int play  = 0;
 int start = 0;
-int TimeToStart;
-// delay of motor 
-int delayMotor = 30;
 
 int counter = 0;
 // Default MotorState
@@ -154,21 +186,35 @@ void printLocalTime(){
   minute = timeinfo.tm_min;
   second = timeinfo.tm_sec;
   datetimeStr = formatDateTime(year, month, day, hour, minute, second);
-
   Serial.println(datetimeStr); 
 }
 
 void setup() {
   Serial.begin(115200);
-  // Connect to WiFi network
   Serial.println();
   Serial.print("MAC: ");
   Serial.println(WiFi.macAddress());
-  WiFi.setHostname(hostname); //define hostname
+  // Get ESP32 MAC address
+  uint8_t espMac[6];
+  WiFi.macAddress(espMac);
+
+
+  for (size_t i = 0; i < sizeof(devices) / sizeof(devices[0]); i++) {
+    if (memcmp(espMac, devices[i].mac, sizeof(espMac)) == 0) {
+      espDeviceName = devices[i].name;
+      break;
+    }
+  }
+
+  WiFi.setHostname(espDeviceName); //define hostname
   WiFi.mode(WIFI_STA);
   WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, INADDR_NONE);
   connectToWiFi();
   
+ 
+
+
+
   Udp.begin(localPort);
   Serial.print("UDP Started: ");
   Serial.println(localPort);
@@ -177,6 +223,8 @@ void setup() {
   digitalWrite(outputPin, motorState);
   configTime(7200, 0, ntpServer);
   printLocalTime();
+  String d_start = dateTimeStr+"----"+espDeviceName+" started";
+  Debug(d_start.c_str());
 }
 
 
@@ -187,7 +235,7 @@ void loop() {
     int len = Udp.read(packetBuffer, 255);
     if (len > 0) packetBuffer[len] = 0;
     String receiver = String(packetBuffer);
-    printLocalTime();
+    //printLocalTime();
     String d_send = datetimeStr+"----"+receiver;
     Debug(d_send.c_str());
     Serial.println(receiver);
@@ -229,11 +277,11 @@ void loop() {
         timeStr[8] = '\0';
 
         // Parse the desired time
-         desiredHour = atoi(timeStr);
+         desiredHour   = atoi(timeStr);
          desiredMinute = atoi(timeStr + 3);
          desiredSecond = atoi(timeStr + 6);
          desiredAchieve=0;
-        Serial.println(String(desiredHour)+":"+String(desiredMinute)+":"+String(desiredSecond));
+         Serial.println(String(desiredHour)+":"+String(desiredMinute)+":"+String(desiredSecond));
        
     }
         receiver = "";
