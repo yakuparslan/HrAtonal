@@ -7,7 +7,7 @@
 #include <time.h>
 #include <NTPClient.h>
 #include <Notes.h>
-
+#include <Preferences.h>
 
 char ssid1[] = "totoo";       
 char pass1[] = "totoo119*";
@@ -19,8 +19,9 @@ const int outputPin = GPIO_NUM_13;
 // delay of motor 
 int delayMotor = 30;
 
-
-const IPAddress remoteIP(192,168,0,77); // Replace with the IP address of your UDP server
+Preferences preferences;
+//192.168.64.140
+const IPAddress remoteIP(192,168,64,140); 
 const unsigned int remotePort = 1234;  
 
 // Structure to hold MAC address and device name
@@ -53,7 +54,6 @@ DeviceInfo devices[] = {
   {{0xB0, 0xA7, 0x32, 0xF1, 0x83, 0x50}, "HR20"},
   {{0xC8, 0xC9, 0xA3, 0xCA, 0x98, 0xE8}, "HR21"},
   {{0x3C, 0x06, 0x30, 0x02, 0xD2, 0x29}, "HR22"},
-  // Add more devices here
 };
 
 // NTP settings
@@ -211,9 +211,6 @@ void setup() {
   WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, INADDR_NONE);
   connectToWiFi();
   
- 
-
-
 
   Udp.begin(localPort);
   Serial.print("UDP Started: ");
@@ -223,8 +220,18 @@ void setup() {
   digitalWrite(outputPin, motorState);
   configTime(7200, 0, ntpServer);
   printLocalTime();
-  String d_start = dateTimeStr+"----"+espDeviceName+" started";
+  String d_start = datetimeStr+"----"+espDeviceName+" started.";
   Debug(d_start.c_str());
+
+  preferences.begin("delay", false); // "my-app" is the namespace for your preferences
+  int storedValue = preferences.getInt("storedValue", 0);
+  if(storedValue!=0){delayMotor=storedValue;}
+  Serial.print("Stored value: ");
+  Serial.println(storedValue);
+
+
+
+
 }
 
 
@@ -235,7 +242,7 @@ void loop() {
     int len = Udp.read(packetBuffer, 255);
     if (len > 0) packetBuffer[len] = 0;
     String receiver = String(packetBuffer);
-    //printLocalTime();
+    printLocalTime();
     String d_send = datetimeStr+"----"+receiver;
     Debug(d_send.c_str());
     Serial.println(receiver);
@@ -269,6 +276,13 @@ void loop() {
     }
     else if (receiver == "START" ) {
         start =1;
+    }
+    else if (receiver == "SAVE" ) {
+        preferences.putInt("storedValue", delayMotor);
+        preferences.end();
+         printLocalTime();
+         String saved = datetimeStr+"----"+ delayMotor+" Delay is saved.";
+         Debug(saved.c_str());
     }
     else if (packetBuffer[0] == 'T' ) {
         // Extract the desired time from the packet
@@ -314,7 +328,8 @@ void loop() {
     if (currentMillis - begin >= interval) {
       Serial.println(counter);
       digitalWrite(outputPin, HIGH);
-      delay(notes_off[counter]-notes_on[counter]);
+      delay(delayMotor);
+      // delay(notes_off[counter]-notes_on[counter]);
       digitalWrite(outputPin, LOW); 
       counter++; 
     }
