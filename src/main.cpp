@@ -15,7 +15,7 @@ char pass1[] = "totoo119*";
 char ssid2[] = "Yakopsen";       
 char pass2[] = "1234567890";
 //Output Pin
-const int outputPin = GPIO_NUM_13;
+int outputPin = GPIO_NUM_13;
 // delay of motor 
 int delayMotor = 30;
 
@@ -24,36 +24,38 @@ Preferences preferences;
 const IPAddress remoteIP(192,168,64,140); 
 const unsigned int remotePort = 1234;  
 
+
 // Structure to hold MAC address and device name
 struct DeviceInfo {
   uint8_t mac[6];
   const char *name;
+  int deviceNum;
 };
 
 // Array of device information
 DeviceInfo devices[] = {
-  {{0xA8, 0x42, 0xE3, 0xCD, 0xEE, 0x78}, "HR01"},
-  {{0xC8, 0xC9, 0xA3, 0xC9, 0xA1, 0x7C}, "HR02"},
-  {{0xA8, 0x42, 0xE3, 0xCD, 0x06, 0xE4}, "HR03"},
-  {{0xA8, 0x42, 0xE3, 0xCD, 0xF0, 0x10}, "HR04"},
-  {{0xA8, 0x42, 0xE3, 0xCC, 0xF8, 0xA4}, "HR05"},
-  {{0xA8, 0x42, 0xE3, 0xCD, 0xF5, 0xD4}, "HR06"},
-  {{0xC8, 0xC9, 0xA3, 0xCA, 0x7F, 0x68}, "HR07"},
-  {{0xA8, 0x42, 0xE3, 0xCD, 0xEF, 0xE0}, "HR08"},
-  {{0xA8, 0x42, 0xE3, 0xCD, 0xE4, 0x3C}, "HR09"},
-  {{0xA8, 0x42, 0xE3, 0xCD, 0xE7, 0xD4}, "HR10"},
-  {{0xA8, 0x42, 0xE3, 0xCD, 0x3F, 0xBC}, "HR11"},
-  {{0x78, 0xE3, 0x6D, 0x09, 0x5A, 0x38}, "HR12"},
-  {{0xA8, 0x42, 0xE3, 0xCE, 0x36, 0xB8}, "HR13"},
-  {{0xA8, 0x42, 0xE3, 0xCE, 0x14, 0x2C}, "HR14"},
-  {{0xA8, 0x42, 0xE3, 0xCE, 0xCF, 0x8C}, "HR15"},
-  {{0xB0, 0xA7, 0x32, 0xF1, 0x5B, 0x6C}, "HR16"},
-  {{0xB0, 0xA7, 0x32, 0xF1, 0x4B, 0xE8}, "HR17"},
-  {{0xA8, 0x42, 0xE3, 0xCD, 0x25, 0xD4}, "HR18"},
-  {{0xA8, 0x42, 0xE3, 0xCD, 0x2F, 0x34}, "HR19"},
-  {{0xB0, 0xA7, 0x32, 0xF1, 0x83, 0x50}, "HR20"},
-  {{0xC8, 0xC9, 0xA3, 0xCA, 0x98, 0xE8}, "HR21"},
-  {{0x3C, 0x06, 0x30, 0x02, 0xD2, 0x29}, "HR22"},
+  {{0xA8, 0x42, 0xE3, 0xCD, 0xEE, 0x78}, "HR01",1},
+  {{0xC8, 0xC9, 0xA3, 0xC9, 0xA1, 0x7C}, "HR02",2},
+  {{0xA8, 0x42, 0xE3, 0xCD, 0x06, 0xE4}, "HR03",3},
+  {{0xA8, 0x42, 0xE3, 0xCD, 0xF0, 0x10}, "HR04",4},
+  {{0xA8, 0x42, 0xE3, 0xCC, 0xF8, 0xA4}, "HR05",5},
+  {{0xA8, 0x42, 0xE3, 0xCD, 0xF5, 0xD4}, "HR06",6},
+  {{0xC8, 0xC9, 0xA3, 0xCA, 0x7F, 0x68}, "HR07",7},
+  {{0xA8, 0x42, 0xE3, 0xCD, 0xEF, 0xE0}, "HR08",8},
+  {{0xA8, 0x42, 0xE3, 0xCD, 0xE4, 0x3C}, "HR09",9},
+  {{0xA8, 0x42, 0xE3, 0xCD, 0xE7, 0xD4}, "HR10",10},
+  {{0xA8, 0x42, 0xE3, 0xCD, 0x3F, 0xBC}, "HR11",11},
+  {{0x78, 0xE3, 0x6D, 0x09, 0x5A, 0x38}, "HR12",12},
+  {{0xA8, 0x42, 0xE3, 0xCE, 0x36, 0xB8}, "HR13",13},
+  {{0xA8, 0x42, 0xE3, 0xCE, 0x14, 0x2C}, "HR14",14},
+  {{0xA8, 0x42, 0xE3, 0xCE, 0xCF, 0x8C}, "HR15",15},
+  {{0xB0, 0xA7, 0x32, 0xF1, 0x5B, 0x6C}, "HR16",16},
+  {{0xB0, 0xA7, 0x32, 0xF1, 0x4B, 0xE8}, "HR17",17},
+  {{0xA8, 0x42, 0xE3, 0xCD, 0x25, 0xD4}, "HR18",18},
+  {{0xA8, 0x42, 0xE3, 0xCD, 0x2F, 0x34}, "HR19",19},
+  {{0xB0, 0xA7, 0x32, 0xF1, 0x83, 0x50}, "HR20",20},
+  {{0xC8, 0xC9, 0xA3, 0xCA, 0x98, 0xE8}, "HR21",21},
+  {{0x3C, 0x06, 0x30, 0x02, 0xD2, 0x29}, "HR22",22},
 };
 
 // NTP settings
@@ -73,6 +75,7 @@ WiFiUDP Udp;
 const unsigned int localPort = 1234;       
 // Find corresponding device name
 const char *espDeviceName = nullptr;
+int espDeviceNum = 0;
 //It will react as play/stop button 
 int play  = 0;
 int start = 0;
@@ -189,23 +192,31 @@ void printLocalTime(){
   Serial.println(datetimeStr); 
 }
 
+
+void setDevice(){
+   // Get ESP32 MAC address
+  uint8_t espMac[6];
+  WiFi.macAddress(espMac);
+  for (size_t i = 0; i < sizeof(devices) / sizeof(devices[0]); i++) {
+    if (memcmp(espMac, devices[i].mac, sizeof(espMac)) == 0) {
+      espDeviceName = devices[i].name;
+      espDeviceNum  = devices[i].deviceNum; 
+      break;
+    }
+  }
+  if(espDeviceNum>=15){
+    outputPin = GPIO_NUM_15;
+  }
+
+}
+
+
 void setup() {
   Serial.begin(115200);
   Serial.println();
   Serial.print("MAC: ");
   Serial.println(WiFi.macAddress());
-  // Get ESP32 MAC address
-  uint8_t espMac[6];
-  WiFi.macAddress(espMac);
-
-
-  for (size_t i = 0; i < sizeof(devices) / sizeof(devices[0]); i++) {
-    if (memcmp(espMac, devices[i].mac, sizeof(espMac)) == 0) {
-      espDeviceName = devices[i].name;
-      break;
-    }
-  }
-
+  setDevice();
   WiFi.setHostname(espDeviceName); //define hostname
   WiFi.mode(WIFI_STA);
   WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, INADDR_NONE);
@@ -246,6 +257,7 @@ void loop() {
     String d_send = datetimeStr+"----"+receiver;
     Debug(d_send.c_str());
     Serial.println(receiver);
+    
     if (receiver == "STOP") {
         play  = 0;
         start = 0; 
@@ -280,9 +292,9 @@ void loop() {
     else if (receiver == "SAVE" ) {
         preferences.putInt("storedValue", delayMotor);
         preferences.end();
-         printLocalTime();
-         String saved = datetimeStr+"----"+ delayMotor+" Delay is saved.";
-         Debug(saved.c_str());
+        printLocalTime();
+        String saved = datetimeStr+"----"+ delayMotor+" Delay is saved.";
+        Debug(saved.c_str());
     }
     else if (packetBuffer[0] == 'T' ) {
         // Extract the desired time from the packet
@@ -291,12 +303,12 @@ void loop() {
         timeStr[8] = '\0';
 
         // Parse the desired time
-         desiredHour   = atoi(timeStr);
-         desiredMinute = atoi(timeStr + 3);
-         desiredSecond = atoi(timeStr + 6);
-         desiredAchieve=0;
-         Serial.println(String(desiredHour)+":"+String(desiredMinute)+":"+String(desiredSecond));
-       
+        desiredHour   = atoi(timeStr);
+        desiredMinute = atoi(timeStr + 3);
+        desiredSecond = atoi(timeStr + 6);
+        desiredAchieve=0;
+        Serial.println(String(desiredHour)+":"+String(desiredMinute)+":"+String(desiredSecond));
+      
     }
         receiver = "";
 }
