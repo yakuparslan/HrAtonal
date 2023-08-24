@@ -8,20 +8,20 @@
 
 
 
-char ssid1[] = "AtonalRA";       
-char pass1[] = "RabonAibo2023";
+char ssid1[] = "totoo";       
+char pass1[] = "totoo119*";
 
 char ssid2[] = "Yakopsen";       
 char pass2[] = "1234567890";
 //Output Pin
-const int outputPin = GPIO_NUM_15;
+int outputPin = GPIO_NUM_13;
 // delay of motor 
 int delayMotor = 30;
 
 Preferences preferences;
 WiFiServer server(1234);
 WiFiClient client;
-const char* serverIP = "192.168.64.140";
+const char* serverIP = "192.168.0.77";
 const int serverPort = 1234;
 
 // Structure to hold MAC address and device name
@@ -92,13 +92,13 @@ unsigned long previousMillis = 0;
 
 void sendTCP(const String& command) {
   if (client.connect(serverIP, serverPort)) {
-    Serial.println("Connected to server");
+   // Serial.println("Connected to server");
 
     // Send the command followed by a newline
     client.println(command);
     // Disconnect from the server
     client.stop();
-    Serial.println("Disconnected from server");
+   // Serial.println("Disconnected from server");
   } else {
     Serial.println("Connection to server failed");
   }
@@ -196,7 +196,6 @@ void printLocalTime(){
 }
 
 void processClient() {
-  while (client.available()) {
     String receiver = client.readStringUntil('\n');
     receiver.trim();
     printLocalTime();
@@ -212,10 +211,6 @@ void processClient() {
         counter = 0;
         digitalWrite(outputPin, LOW);      
     }
-    else if (command == "START") {
-      // Perform action for START
-      // Your code here
-    }
     else if (receiver.substring(0,5) == "DELAY") {
         delayMotor = receiver.substring(6).toInt();
     }
@@ -225,7 +220,7 @@ void processClient() {
               bpm = new_bpm;  
         }
     }
-    else if (command == "RESET") {
+    else if (receiver == "RESET") {
         ESP.restart(); 
     }
     else if (receiver == "PUSH") {
@@ -247,15 +242,16 @@ void processClient() {
     }
     else if (receiver.length() == 9 && receiver[0] == 'T' ) {
         // Parse the desired time
-        desiredHour   = (timeString.substring(1, 3)).toInt();
-        desiredMinute = (timeString.substring(4, 6)).toInt();
-        desiredSecond = (timeString.substring(7, 9)).toInt();
+        desiredHour   = (receiver.substring(1, 3)).toInt();
+        desiredMinute = (receiver.substring(4, 6)).toInt();
+        desiredSecond = (receiver.substring(7, 9)).toInt();
         desiredAchieve=0;
         Serial.println(String(desiredHour)+":"+String(desiredMinute)+":"+String(desiredSecond));
        
     }
-    receiver='';
-  }
+  
+    receiver="";
+  
 }
 
 void setDevice(){
@@ -270,7 +266,7 @@ void setDevice(){
     }
   }
   if(espDeviceNum>=15){
-    outputPin = GPIO_NUM_13;
+    outputPin = GPIO_NUM_15;
   }
 
 }
@@ -303,13 +299,22 @@ void setup() {
 
 
 
+  // Start TCP server
+  server.begin();
 
 }
 
 
 
 void loop() {
-  processClient;
+  client = server.available();
+  while(client.connected()){
+    if (client.available())
+    {
+      processClient();
+    }
+  }
+  client.stop();
   getLocalTime(&timeinfo);
   if(timeinfo.tm_hour==desiredHour&&timeinfo.tm_min==desiredMinute&&timeinfo.tm_sec>=desiredSecond&&desiredAchieve==0){
     start=1;
