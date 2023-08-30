@@ -8,6 +8,9 @@
 #include <NTPClient.h>
 #include <Notes.h>
 #include <Preferences.h>
+#include <WiFiClient.h>
+
+const int bpm_timeline = 180;
 
 char ssid1[] = "totoo";       
 char pass1[] = "totoo119*";
@@ -21,8 +24,17 @@ int delayMotor = 30;
 
 Preferences preferences;
 //192.168.64.140
-const IPAddress remoteIP(192,168,64,140); 
+const IPAddress remoteIP(192,168,0,77); 
 const unsigned int remotePort = 1234;  
+
+int *currentArray;
+int currentArrayLength ;
+
+
+WiFiServer server(1234);
+WiFiClient client;
+const char* serverIP = "192.168.0.77";
+const int serverPort = 1234;
 
 
 // Structure to hold MAC address and device name
@@ -79,8 +91,9 @@ int espDeviceNum = 0;
 //It will react as play/stop button 
 int play  = 0;
 int start = 0;
-
+const int millisecond_per_tick = 15000/bpm_timeline;
 int counter = 0;
+int time_place = 0; 
 // Default MotorState
 int motorState = LOW;  
 
@@ -98,8 +111,22 @@ void Debug(const char* message){
     Udp.beginPacket(remoteIP, remotePort);
     Udp.write((uint8_t*)message, strlen(message));
     Udp.endPacket();
+    }
 
+void sendTCP(const String& command) {
+  if (client.connect(serverIP, serverPort)) {
+   // Serial.println("Connected to server");
+
+    // Send the command followed by a newline
+    client.println(command);
+    // Disconnect from the server
+    client.stop();
+   // Serial.println("Disconnected from server");
+  } else {
+    Serial.println("Connection to server failed");
+  }
 }
+
 
 void connectToWiFi() {
   Serial.println("Connecting to Wi-Fi...");
@@ -210,6 +237,182 @@ void setDevice(){
 
 }
 
+void ReceivedPacket (String& receiver,const char* received_type){
+ if (receiver == "REC") {
+        play =1;
+    }
+    else if (receiver == "STOP") {
+        play  = 0;
+        start = 0; 
+        counter = 0;
+        time_place=0; 
+        digitalWrite(outputPin, LOW);      
+    }
+    else if (receiver.substring(0,5) == "DELAY") {
+        delayMotor = receiver.substring(6).toInt();
+    }
+    else if (receiver.substring(0,3) == "BPM")  {
+        int new_bpm = receiver.substring(4).toInt();     
+        if (bpm !=new_bpm&& new_bpm >=1 && new_bpm<=1000) {
+              bpm = new_bpm;  
+        }
+    }
+    else if (receiver == "RESET") {
+        ESP.restart(); 
+    }
+    else if (receiver == "PUSH") {
+        currentMillis=millis();
+        while(millis()-currentMillis<=delayMotor) {
+            digitalWrite(outputPin, HIGH); 
+        }
+            digitalWrite(outputPin,LOW);
+    }
+    else if (receiver == "START" ) {
+        start =1;
+        
+    }
+    else if (receiver == "SAVE") {
+        preferences.putInt("storedValue", delayMotor);
+        preferences.end();
+        printLocalTime();
+        String saved = datetimeStr+"----"+ delayMotor+" Delay is saved.";
+        if(received_type=="TCP"){
+         sendTCP(saved);
+        }
+        else{
+        Debug(saved.c_str());
+        }
+    }
+    else if (receiver.length() == 9 && receiver[0] == 'T' ) {
+        // Parse the desired time
+        desiredHour   = (receiver.substring(1, 3)).toInt();
+        desiredMinute = (receiver.substring(4, 6)).toInt();
+        desiredSecond = (receiver.substring(7, 9)).toInt();
+        desiredAchieve=0;
+        Serial.println(String(desiredHour)+":"+String(desiredMinute)+":"+String(desiredSecond));
+       
+    }
+    else if (receiver.substring(0, 4) == "MIDI") {
+          // Find the position of the first "|" delimiter
+          int firstDelimiterPos = receiver.indexOf('|');
+
+          // Find the position of the second "|" delimiter
+          int secondDelimiterPos = receiver.indexOf('|', firstDelimiterPos + 1);
+
+          // Extract ArraySize as a substring
+          String arraySizeStr = receiver.substring(firstDelimiterPos + 1, secondDelimiterPos);
+          int arraySize = arraySizeStr.toInt();
+          
+          // // Extract values substring after the second "|"
+           String valuesStr = receiver.substring(secondDelimiterPos + 1);
+          
+          // // Initialize an array to store values
+          int values[arraySize];
+          
+          // // Parse and store values into the array
+          int currentIndex = 0;
+          int commaPos;
+          while ((commaPos = valuesStr.indexOf(',')) != -1) {
+              values[currentIndex] = valuesStr.substring(0, commaPos).toInt();
+              valuesStr = valuesStr.substring(commaPos + 1);
+              currentIndex++;
+          }
+          // Parse the last value after the last comma
+          values[currentIndex] = valuesStr.toInt();
+          printLocalTime();
+          currentArray=values;
+          currentArrayLength=arraySize;
+          String saved = datetimeStr+"----"+arraySize+" number of notes is saved.";
+          if(received_type=="TCP"){
+          sendTCP(saved);
+          }
+          else{
+          Debug(saved.c_str());
+          }
+          // // Now you have the array size and values stored in the 'values' array
+      }
+  
+    receiver="";
+  
+
+}
+
+void TCPReceived() {
+    String receiver = client.readStringUntil('\n');
+    receiver.trim();
+    printLocalTime();
+    if(receiver.substring(0, 4) != "MIDI"){
+    String d_send = datetimeStr+"----"+receiver;
+    sendTCP(d_send);
+    }
+    Serial.println(receiver);
+    ReceivedPacket(receiver,"TCP");
+}
+
+void UDPReceived() {
+    int len = Udp.read(packetBuffer, 255);
+    if (len > 0) packetBuffer[len] = 0;
+    String receiver = String(packetBuffer);
+    printLocalTime();
+    String d_send = datetimeStr+"----"+receiver;
+    Debug(d_send.c_str());
+    ReceivedPacket(receiver,"UDP");
+}
+
+void StartTimeLine (int *timeline,int array_length){
+      if(counter==0){
+      begin=millis();
+    }
+    interval = timeline[time_place]/24*millisecond_per_tick; 
+    currentMillis = millis();
+
+       
+    if (currentMillis - begin >= interval) {
+      Serial.println(time_place);
+      digitalWrite(outputPin, HIGH);
+      delay(delayMotor);
+      // delay(notes_off[counter]-notes_on[counter]);
+      digitalWrite(outputPin, LOW); 
+      time_place++;
+    }
+    if(time_place==array_length){
+      start=0;
+      counter=0;
+      time_place=0;
+    }
+    else {
+    counter++;  
+    } 
+  } 
+  void assignTimeline(){
+    switch (espDeviceNum) {
+    case 1:  currentArray = HR01; currentArrayLength = HR01_LENGTH; break;
+    case 2:  currentArray = HR02; currentArrayLength = HR02_LENGTH; break;
+    case 3:  currentArray = HR03; currentArrayLength = HR03_LENGTH; break;
+    case 4:  currentArray = HR04; currentArrayLength = HR04_LENGTH; break;
+    case 5:  currentArray = HR05; currentArrayLength = HR05_LENGTH; break;
+    case 6:  currentArray = HR06; currentArrayLength = HR06_LENGTH; break;
+    case 7:  currentArray = HR07; currentArrayLength = HR07_LENGTH; break;
+    case 8:  currentArray = HR08; currentArrayLength = HR08_LENGTH; break;
+    case 9:  currentArray = HR09; currentArrayLength = HR09_LENGTH; break;
+    case 10: currentArray = HR10; currentArrayLength = HR10_LENGTH; break;
+    case 11: currentArray = HR11; currentArrayLength = HR11_LENGTH; break;
+    case 12: currentArray = HR12; currentArrayLength = HR12_LENGTH; break;
+    case 13: currentArray = HR13; currentArrayLength = HR13_LENGTH; break;
+    case 14: currentArray = HR14; currentArrayLength = HR14_LENGTH; break;
+    case 15: currentArray = HR15; currentArrayLength = HR15_LENGTH; break;
+    case 16: currentArray = HR16; currentArrayLength = HR16_LENGTH; break;
+    case 17: currentArray = HR17; currentArrayLength = HR17_LENGTH; break;
+    case 18: currentArray = HR18; currentArrayLength = HR18_LENGTH; break;
+    case 19: currentArray = HR19; currentArrayLength = HR19_LENGTH; break;
+    case 20: currentArray = HR20; currentArrayLength = HR20_LENGTH; break;
+    case 21: currentArray = HR21; currentArrayLength = HR21_LENGTH; break;
+    default: currentArray = HR01; currentArrayLength = HR01_LENGTH; break;
+
+}
+  }
+
+
 
 void setup() {
   Serial.begin(115200);
@@ -222,18 +425,18 @@ void setup() {
   WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, INADDR_NONE);
   connectToWiFi();
   
+  assignTimeline();
 
   Udp.begin(localPort);
   Serial.print("UDP Started: ");
   Serial.println(localPort);
-  Serial.println("Size of the Notes Array: "+String(array_length));
   pinMode(outputPin, OUTPUT);
   digitalWrite(outputPin, motorState);
   configTime(7200, 0, ntpServer);
   printLocalTime();
-  String d_start = datetimeStr+"----"+espDeviceName+" started.";
-  Debug(d_start.c_str());
-
+  String started = datetimeStr+"----"+espDeviceName+" started.";
+  Debug(started.c_str());
+  sendTCP(started);
   preferences.begin("delay", false); // "my-app" is the namespace for your preferences
   int storedValue = preferences.getInt("storedValue", 0);
   if(storedValue!=0){delayMotor=storedValue;}
@@ -242,77 +445,29 @@ void setup() {
 
 
 
+  // Start TCP server
+  server.begin();
 
 }
+
+
 
 
 
 void loop() {
+  client = server.available();
+  while(client.connected()){
+    if (client.available())
+    {
+      TCPReceived();
+    }
+  }
+  client.stop();
+
   int packetSize = Udp.parsePacket();
   if (packetSize) {
-    int len = Udp.read(packetBuffer, 255);
-    if (len > 0) packetBuffer[len] = 0;
-    String receiver = String(packetBuffer);
-    printLocalTime();
-    String d_send = datetimeStr+"----"+receiver;
-    Debug(d_send.c_str());
-    Serial.println(receiver);
-    
-    if (receiver == "STOP") {
-        play  = 0;
-        start = 0; 
-        counter = 0;
-        digitalWrite(outputPin, LOW);      
-    }
-    else if (receiver == "PUSH") {
-        currentMillis=millis();
-        while(millis()-currentMillis<=delayMotor) {
-            digitalWrite(outputPin, HIGH); 
-        }
-            digitalWrite(outputPin,LOW);
-    }
-    else if (receiver.substring(0,5) == "DELAY") {
-        delayMotor = receiver.substring(6).toInt();
-    }
-    else if (receiver == "RESET") {
-        ESP.restart(); 
-    }
-    else if (receiver.substring(0,3) == "BPM")  {
-        int new_bpm = receiver.substring(4).toInt();     
-        if (bpm !=new_bpm&& new_bpm >=1 && new_bpm<=1000) {
-              bpm = new_bpm;  
-        }
-    }
-    else if (receiver == "REC" ) {
-        play =1;
-    }
-    else if (receiver == "START" ) {
-        start =1;
-    }
-    else if (receiver == "SAVE" ) {
-        preferences.putInt("storedValue", delayMotor);
-        preferences.end();
-        printLocalTime();
-        String saved = datetimeStr+"----"+ delayMotor+" Delay is saved.";
-        Debug(saved.c_str());
-    }
-    else if (packetBuffer[0] == 'T' ) {
-        // Extract the desired time from the packet
-        char timeStr[9];
-        strncpy(timeStr, packetBuffer + 1, 8);
-        timeStr[8] = '\0';
-
-        // Parse the desired time
-        desiredHour   = atoi(timeStr);
-        desiredMinute = atoi(timeStr + 3);
-        desiredSecond = atoi(timeStr + 6);
-        desiredAchieve=0;
-        Serial.println(String(desiredHour)+":"+String(desiredMinute)+":"+String(desiredSecond));
-      
-    }
-        receiver = "";
-}
-
+      UDPReceived();
+  }
   getLocalTime(&timeinfo);
   if(timeinfo.tm_hour==desiredHour&&timeinfo.tm_min==desiredMinute&&timeinfo.tm_sec>=desiredSecond&&desiredAchieve==0){
     start=1;
@@ -330,27 +485,11 @@ void loop() {
     }      
   }
 
-  if(start==1){
-    if(counter==0){
-      begin=millis();
-    }
-    interval = notes_on[counter]; 
-    currentMillis = millis();
-    
-    if (currentMillis - begin >= interval) {
-      Serial.println(counter);
-      digitalWrite(outputPin, HIGH);
-      delay(delayMotor);
-      // delay(notes_off[counter]-notes_on[counter]);
-      digitalWrite(outputPin, LOW); 
-      counter++; 
-    }
-    if(counter==array_length){
-      start=0;
-      counter=0;
-    }   
-  } 
+  if(start==1){  
+     StartTimeLine(currentArray, currentArrayLength);
+}
     
 
 }
+
 
